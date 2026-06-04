@@ -1,0 +1,39 @@
+{
+  "skill_name": "helm-chart-best-practices",
+  "evals": [
+    {
+      "id": 1,
+      "name": "review-bad-chart",
+      "prompt": "I inherited the Helm chart in evals/fixtures/bad-chart/. Can you review it and tell me what's wrong? List every issue you find by severity (must fix / should fix / consider), point at the file and line, cite the Helm best-practices guide, and give me a concrete patch for each one.",
+      "expected_output": "A categorized review report that identifies at minimum: chart name has uppercase letters; chart version is not SemVer; values use uppercase and nested keys without docs; helper templates are not namespaced; selector uses mutable labels (version); namespace is hardcoded in template; image uses latest tag; values.yaml is undocumented; dependency uses exact pin + http; CRD uses template actions under crds/. Patches should be concrete.",
+      "files": [
+        "evals/fixtures/bad-chart/"
+      ],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "generate-go-web-service",
+      "prompt": "Scaffold a new Helm chart following the official best-practices guide for a Go web service called 'orderbook-api' that serves HTTP on port 8080, uses image ghcr.io/example/orderbook-api:1.2.3, and needs a Postgres dependency. The chart should include a Deployment, Service, ServiceAccount, and proper helper templates. Put everything under a new directory called 'orderbook-api/'.",
+      "expected_output": "A complete chart at orderbook-api/ with Chart.yaml (SemVer, apiVersion v2, Postgres dependency with version range and https repo), values.yaml (flat, camelCase, every key documented, image+tag split, imagePullPolicy IfNotPresent), templates/_helpers.tpl with chart-namespaced defines, templates/deployment.yaml with stable selector (name + instance only), templates/service.yaml, templates/serviceaccount.yaml gated on serviceAccount.create, templates/NOTES.txt, .helmignore.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "answer-labels-question",
+      "prompt": "I'm writing a Helm chart and I'm a bit lost on labels. Which labels should I put on a Deployment, and which of them should also go in the spec.selector? Please cite the Helm best-practices guide.",
+      "expected_output": "Clear explanation that the metadata.labels should include app.kubernetes.io/name, app.kubernetes.io/instance, app.kubernetes.io/managed-by, helm.sh/chart, plus optionally app.kubernetes.io/version and component, while spec.selector.matchLabels must only include the immutable subset (app.kubernetes.io/name + app.kubernetes.io/instance) — never helm.sh/chart or app.kubernetes.io/version because they change on upgrade. Should reference the upstream guide.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "name": "refactor-values-block",
+      "prompt": "Refactor this values.yaml block to follow Helm best practices. Keep the meaning the same.\n\n```yaml\nServer:\n  Image: nginx:latest\n  Port: 8080\n  Replicas: 3\nDatabase:\n  enabled: yes\nrbac_create: true\n```\n\nProduce the refactored YAML inline, then explain each change and which guide section it satisfies.",
+      "expected_output": "A flat (or sensibly nested), camelCase, documented values.yaml that splits image.repository and image.tag, quotes ambiguous booleans, uses rbac.create / serviceAccount.create grouping, and pins to a fixed image tag. Each change is explained with a reference to the upstream guide.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}

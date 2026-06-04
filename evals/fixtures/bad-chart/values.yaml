@@ -1,0 +1,9 @@
+server:
+  image: nginx:latest
+  Port: 8080
+  replicas: 3
+
+Database:
+  enabled: yes
+
+rbac_create: true

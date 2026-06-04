@@ -1,0 +1,10 @@
+apiVersion: v2
+name: MyWebApp
+description: A web application
+type: application
+version: v1.0
+appVersion: latest
+dependencies:
+  - name: postgresql
+    version: 12.5.6
+    repository: http://charts.example.com
