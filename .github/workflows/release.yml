@@ -1,0 +1,106 @@
+name: Release
+
+# Builds the helm-chart-best-practices.skill artifact and attaches it to a GitHub
+# Release whenever a tag matching `v*` (e.g. v0.1.0) is pushed.
+#
+# Usage:
+#   1. Bump `version` in .claude-plugin/plugin.json (e.g. 0.1.0 -> 0.2.0).
+#   2. Commit and push the version bump.
+#   3. Tag the commit: `git tag v0.2.0 && git push origin v0.2.0`.
+#
+# The workflow verifies that the git tag matches the plugin.json version before
+# packaging so the two stay in sync.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pyyaml
+
+      - name: Verify tag matches both plugin manifests
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          for manifest in .claude-plugin/plugin.json .codex-plugin/plugin.json; do
+            VERSION="$(python -c "import json; print(json.load(open('$manifest'))['version'])")"
+            if [ "$TAG_VERSION" != "$VERSION" ]; then
+              echo "::error::Git tag v$TAG_VERSION does not match $manifest version $VERSION"
+              exit 1
+            fi
+          done
+          echo "Releasing v$TAG_VERSION"
+
+      - name: Validate SKILL.md frontmatter
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          import yaml
+
+          skill_path = Path("skills/helm-chart-best-practices/SKILL.md")
+          text = skill_path.read_text()
+          if not text.startswith("---\n"):
+              sys.exit(f"::error::{skill_path} is missing a YAML frontmatter block")
+          _, frontmatter, _ = text.split("---\n", 2)
+          meta = yaml.safe_load(frontmatter) or {}
+          required = ("name", "description")
+          missing = [k for k in required if not meta.get(k)]
+          if missing:
+              sys.exit(f"::error::SKILL.md frontmatter missing required keys: {missing}")
+          if meta["name"] != "helm-chart-best-practices":
+              sys.exit(f"::error::SKILL.md name must be 'helm-chart-best-practices', got {meta['name']!r}")
+          print("SKILL.md frontmatter OK")
+          PY
+
+      - name: Package .skill archive
+        id: package
+        run: |
+          set -euo pipefail
+          ARTIFACT="helm-chart-best-practices.skill"
+          # Build the zip with paths rooted at `helm-chart-best-practices/...`
+          (
+            cd skills
+            zip -r "../$ARTIFACT" helm-chart-best-practices \
+              -x "**/__pycache__/*" "**/*.pyc" "**/.DS_Store"
+          )
+          ls -la "$ARTIFACT"
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(shasum -a 256 "$ARTIFACT" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.artifact }}
+          generate_release_notes: true
+          body: |
+            **Plugin version:** ${{ github.ref_name }}
+
+            **SHA-256:** `${{ steps.package.outputs.sha256 }}`
+
+            ## Install
+
+            ### As a plugin (Claude Code)
+            ```
+            /plugin marketplace add ${{ github.repository }}
+            /plugin install helm-chart-best-practices@helm-chart-best-practices
+            ```
+
+            ### As a single skill (download the `.skill` below)
+            Drop the attached `helm-chart-best-practices.skill` into your skills directory or upload it through your Claude client.
