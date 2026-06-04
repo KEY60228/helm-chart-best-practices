@@ -1,0 +1,14 @@
+{
+  "name": "helm-chart-best-practices",
+  "plugins": [
+    {
+      "name": "helm-chart-best-practices",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "description": "Review and generate Helm charts following the official Helm Chart Best Practices Guide.",
+      "category": "Development"
+    }
+  ]
+}
