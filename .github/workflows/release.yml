@@ -103,4 +103,4 @@ jobs:
             ```
 
             ### As a single skill (download the `.skill` below)
-            Drop the attached `helm-chart-best-practices.skill` into your skills directory or upload it through your Claude client.
+            Drop the attached `helm-chart-best-practices.skill` into your skills directory or upload it through a client that supports Agent Skills.

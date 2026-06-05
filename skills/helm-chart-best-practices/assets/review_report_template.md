@@ -2,7 +2,7 @@
 
 **Chart version reviewed:** `<x.y.z>`
 **Date:** `<YYYY-MM-DD>`
-**Reviewer:** Claude with the `helm-chart-best-practices` skill
+**Reviewer:** `<agent/tool>` with the `helm-chart-best-practices` skill
 
 > Authoritative reference: <https://helm.sh/docs/chart_best_practices/>
 
