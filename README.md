@@ -30,11 +30,18 @@ When the skill triggers, the agent will:
 # Register this repository as a marketplace
 codex plugin marketplace add KEY60228/helm-chart-best-practices
 
-# Install the plugin (also available in the interactive `codex /plugins` browser)
-codex plugin install helm-chart-best-practices
+# Install the plugin
+codex plugin add helm-chart-best-practices@helm-chart-best-practices
 ```
 
-The repository ships parallel manifests — `.claude-plugin/plugin.json` for Claude Code and `.codex-plugin/plugin.json` for Codex — pointing at the same `skills/helm-chart-best-practices/` source.
+The plugin is also available in the interactive Codex plugin browser:
+
+```text
+codex
+/plugins
+```
+
+The repository ships marketplace metadata for both Claude Code and Codex. Both marketplaces point at the same plugin bundle under `plugins/helm-chart-best-practices/`, which is the source of truth for the skill and both plugin manifests.
 
 ### Other agents (open Agent Skills standard)
 
@@ -42,7 +49,7 @@ The skill follows the open [Agent Skills](https://agentskills.io/) standard, so 
 
 ```bash
 git clone https://github.com/KEY60228/helm-chart-best-practices.git
-ln -s "$(pwd)/helm-chart-best-practices/skills/helm-chart-best-practices" \
+ln -s "$(pwd)/helm-chart-best-practices/plugins/helm-chart-best-practices/skills/helm-chart-best-practices" \
       "$HOME/.agents/skills/helm-chart-best-practices"
 ```
 

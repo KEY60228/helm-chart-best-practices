@@ -2,6 +2,10 @@
   "name": "helm-chart-best-practices",
   "version": "0.1.0",
   "description": "Review and generate Helm charts following the official Helm Chart Best Practices Guide (https://helm.sh/docs/chart_best_practices/).",
+  "author": {
+    "name": "helm-chart-best-practices contributors",
+    "url": "https://github.com/KEY60228"
+  },
   "license": "Apache-2.0",
   "keywords": [
     "helm",

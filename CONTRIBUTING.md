@@ -6,22 +6,26 @@ Thanks for your interest in improving `helm-chart-best-practices`! This document
 
 ```
 .
-├── .claude-plugin/      # Plugin & marketplace manifests for Claude Code
-├── .codex-plugin/       # Plugin & marketplace manifests for Codex
-├── skills/
+├── .claude-plugin/      # Claude Code marketplace manifest
+├── .agents/plugins/     # Codex marketplace manifest
+├── plugins/             # Plugin bundles
 │   └── helm-chart-best-practices/
-│       ├── SKILL.md     # Skill entry point (this is what the agent loads)
-│       ├── references/  # One file per chapter of the upstream guide
-│       ├── scripts/     # Helpers (helm lint wrapper, label checker)
-│       └── assets/      # Output templates
+│       ├── .claude-plugin/plugin.json
+│       ├── .codex-plugin/plugin.json
+│       └── skills/
+│           └── helm-chart-best-practices/
+│               ├── SKILL.md     # Skill entry point (this is what the agent loads)
+│               ├── references/  # One file per chapter of the upstream guide
+│               ├── scripts/     # Helpers (helm lint wrapper, label checker)
+│               └── assets/      # Output templates
 ├── evals/               # Test cases and fixtures used to evaluate the skill
 ├── .github/workflows/   # CI (release packaging)
 └── README.md
 ```
 
-The skill itself (`skills/helm-chart-best-practices/`) is the single source of truth; both plugin manifests reference it. When bumping the version, update **both** `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` — the release workflow refuses to publish if they drift.
+The plugin bundle under `plugins/helm-chart-best-practices/` is the source of truth for both Claude Code and Codex. When bumping the version, update **both** `plugins/helm-chart-best-practices/.claude-plugin/plugin.json` and `plugins/helm-chart-best-practices/.codex-plugin/plugin.json` — the release workflow refuses to publish if they drift.
 
-When editing the skill, the file you almost always want is `skills/helm-chart-best-practices/SKILL.md` and the chapter under `references/`.
+When editing the skill, the file you almost always want is `plugins/helm-chart-best-practices/skills/helm-chart-best-practices/SKILL.md` and the chapter under `references/`.
 
 ## Local development
 
@@ -30,16 +34,32 @@ You can iterate on the skill locally by symlinking it into your user skills dire
 ```bash
 git clone https://github.com/KEY60228/helm-chart-best-practices.git
 cd helm-chart-best-practices
-ln -s "$(pwd)/skills/helm-chart-best-practices" \
+
+# Claude Code
+ln -s "$(pwd)/plugins/helm-chart-best-practices/skills/helm-chart-best-practices" \
       "$HOME/.claude/skills/helm-chart-best-practices"
+
+# Codex
+mkdir -p "$HOME/.agents/skills"
+ln -s "$(pwd)/plugins/helm-chart-best-practices/skills/helm-chart-best-practices" \
+      "$HOME/.agents/skills/helm-chart-best-practices"
 ```
 
-Edits to `SKILL.md` / `references/*.md` take effect on the next Claude Code session.
+Edits to `SKILL.md` / `references/*.md` take effect on the next Claude Code or Codex session.
+
+To test the full Codex plugin wrapper from this repository:
+
+```bash
+codex plugin marketplace add .
+codex plugin add helm-chart-best-practices@helm-chart-best-practices
+```
+
+Start a new Codex thread after reinstalling so the updated plugin and bundled skill are loaded.
 
 To test the bundled scripts directly:
 
 ```bash
-skills/helm-chart-best-practices/scripts/run_checks.sh evals/fixtures/bad-chart
+plugins/helm-chart-best-practices/skills/helm-chart-best-practices/scripts/run_checks.sh evals/fixtures/bad-chart
 ```
 
 This runs `helm lint`, `helm template`, and the label checker — useful when you change the scripts themselves.
@@ -67,7 +87,7 @@ When you add a new eval case:
 
 1. Re-read each of the eight chapters and update the corresponding `references/*.md`.
 2. Update example snippets if upstream changed them.
-3. Bump `version` in `.claude-plugin/plugin.json`.
+3. Bump `version` in `plugins/helm-chart-best-practices/.claude-plugin/plugin.json` and `plugins/helm-chart-best-practices/.codex-plugin/plugin.json`.
 4. Cut a new release (see below).
 
 ## Releasing
@@ -76,7 +96,7 @@ The `.skill` artifact is **not committed**. It is built by CI on tag push and at
 
 To cut a release:
 
-1. Bump `version` in **both** `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` (SemVer, e.g. `0.1.0` → `0.2.0`).
+1. Bump `version` in **both** `plugins/helm-chart-best-practices/.claude-plugin/plugin.json` and `plugins/helm-chart-best-practices/.codex-plugin/plugin.json` (SemVer, e.g. `0.1.0` → `0.2.0`).
 2. Commit and push the version bump on `main`.
 3. Tag the commit and push the tag:
    ```bash
@@ -87,8 +107,9 @@ To cut a release:
 The `Release` workflow (`.github/workflows/release.yml`) then:
 
 - Verifies that the git tag matches the `version` in both plugin manifests (refuses to release otherwise).
+- Validates the Codex plugin manifest and Codex marketplace manifest.
 - Validates the `SKILL.md` frontmatter.
-- Zips `skills/helm-chart-best-practices/` into `helm-chart-best-practices.skill`.
+- Zips `plugins/helm-chart-best-practices/skills/helm-chart-best-practices/` into `helm-chart-best-practices.skill`.
 - Creates a GitHub Release with auto-generated notes and the `.skill` attached.
 
 ### Building the artifact locally
@@ -96,7 +117,7 @@ The `Release` workflow (`.github/workflows/release.yml`) then:
 For pre-release smoke testing only — never commit the result:
 
 ```bash
-(cd skills && zip -r ../helm-chart-best-practices.skill helm-chart-best-practices \
+(cd plugins/helm-chart-best-practices/skills && zip -r ../../../helm-chart-best-practices.skill helm-chart-best-practices \
   -x '**/__pycache__/*' '**/*.pyc' '**/.DS_Store')
 ```
 

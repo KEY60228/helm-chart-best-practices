@@ -1,12 +1,13 @@
 {
   "name": "helm-chart-best-practices",
+  "description": "Helm chart review and generation plugins following the official Helm Chart Best Practices Guide.",
   "owner": {
     "name": "helm-chart-best-practices contributors"
   },
   "plugins": [
     {
       "name": "helm-chart-best-practices",
-      "source": "./",
+      "source": "./plugins/helm-chart-best-practices",
       "description": "Review and generate Helm charts following the official Helm Chart Best Practices Guide."
     }
   ]
