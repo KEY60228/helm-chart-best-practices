@@ -1,12 +1,12 @@
 # helm-chart-best-practices
 
-A Claude Code skill (and OSS plugin) that helps Claude **review** and **generate** Helm charts following the [official Helm Chart Best Practices Guide](https://helm.sh/docs/chart_best_practices/).
+A reusable Agent Skill and plugin that helps agents **review** and **generate** Helm charts following the [official Helm Chart Best Practices Guide](https://helm.sh/docs/chart_best_practices/).
 
-The skill captures the eight chapters of the official guide — General Conventions, Values, Templates, Dependencies, Labels and Annotations, Pods and PodTemplates, Custom Resource Definitions, and Role-Based Access Control — and turns them into a routine Claude can run on any chart you give it.
+The skill captures the eight chapters of the official guide — General Conventions, Values, Templates, Dependencies, Labels and Annotations, Pods and PodTemplates, Custom Resource Definitions, and Role-Based Access Control — and turns them into a routine an agent can run on any chart you give it.
 
 ## What it does
 
-When the skill triggers, Claude will:
+When the skill triggers, the agent will:
 
 - **Review mode** — Walk a Helm chart directory, run `helm lint` / `helm template` when available, and produce a categorized report of best-practice violations with suggested fixes and references to the upstream guidance.
 - **Generate mode** — Scaffold a new chart that already follows the guide (correct chart name, SemVer, standard labels, flat values with documentation, helper templates, secure pod defaults, etc.).
