@@ -50,7 +50,7 @@ RESOURCE_KINDS_REQUIRING_LABELS = {
 }
 
 
-def _render(chart_dir: Path) -> str | None:
+def _render(chart_dir: Path) -> tuple[str | None, str | None]:
     try:
         result = subprocess.run(
             ["helm", "template", "_label_check_", str(chart_dir)],
@@ -60,11 +60,11 @@ def _render(chart_dir: Path) -> str | None:
             check=False,
         )
     except FileNotFoundError:
-        return None
+        return None, "missing-helm"
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
-        return None
-    return result.stdout
+        return None, "render-failed"
+    return result.stdout, None
 
 
 def _split_docs(rendered: str) -> list[str]:
@@ -124,11 +124,14 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(f"error: {chart_dir}/Chart.yaml not found\n")
         return 64
 
-    rendered = _render(chart_dir)
+    rendered, render_error = _render(chart_dir)
     if rendered is None:
-        print("note: 'helm' is unavailable; static label scan is limited.")
-        print("      Install helm for full coverage.")
-        return 0
+        if render_error == "missing-helm":
+            print("note: 'helm' is unavailable; label coverage was not checked.")
+            print("      Install helm for full coverage.")
+            return 0
+        print("error: helm template failed; label coverage could not be checked.")
+        return 2
 
     issues: list[str] = []
     parsed_any = False
