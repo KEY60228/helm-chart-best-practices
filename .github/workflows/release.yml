@@ -4,7 +4,9 @@ name: Release
 # Release whenever a tag matching `v*` (e.g. v0.1.0) is pushed.
 #
 # Usage:
-#   1. Bump `version` in .claude-plugin/plugin.json (e.g. 0.1.0 -> 0.2.0).
+#   1. Bump `version` in plugins/helm-chart-best-practices/.claude-plugin/plugin.json and
+#      plugins/helm-chart-best-practices/.codex-plugin/plugin.json
+#      (e.g. 0.1.0 -> 0.2.0).
 #   2. Commit and push the version bump.
 #   3. Tag the commit: `git tag v0.2.0 && git push origin v0.2.0`.
 #
@@ -38,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          for manifest in .claude-plugin/plugin.json .codex-plugin/plugin.json; do
+          for manifest in plugins/helm-chart-best-practices/.claude-plugin/plugin.json plugins/helm-chart-best-practices/.codex-plugin/plugin.json; do
             VERSION="$(python -c "import json; print(json.load(open('$manifest'))['version'])")"
             if [ "$TAG_VERSION" != "$VERSION" ]; then
               echo "::error::Git tag v$TAG_VERSION does not match $manifest version $VERSION"
@@ -47,6 +49,88 @@ jobs:
           done
           echo "Releasing v$TAG_VERSION"
 
+      - name: Validate Codex plugin metadata
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          manifest_path = Path("plugins/helm-chart-best-practices/.codex-plugin/plugin.json")
+          marketplace_path = Path(".agents/plugins/marketplace.json")
+          manifest = json.loads(manifest_path.read_text())
+          marketplace = json.loads(marketplace_path.read_text())
+
+          errors = []
+
+          def require_string(obj, key, label):
+              value = obj.get(key)
+              if not isinstance(value, str) or not value.strip():
+                  errors.append(f"{label}.{key} must be a non-empty string")
+              return value
+
+          require_string(manifest, "name", "plugin")
+          version = require_string(manifest, "version", "plugin")
+          if version and not re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?", version):
+              errors.append("plugin.version must be SemVer")
+          require_string(manifest, "description", "plugin")
+          if manifest.get("skills") != "./skills/":
+              errors.append("plugin.skills must be ./skills/")
+
+          author = manifest.get("author")
+          if not isinstance(author, dict) or not author.get("name"):
+              errors.append("plugin.author.name is required")
+
+          interface = manifest.get("interface")
+          if not isinstance(interface, dict):
+              errors.append("plugin.interface is required")
+          else:
+              for key in ("displayName", "shortDescription", "longDescription", "developerName", "category"):
+                  require_string(interface, key, "plugin.interface")
+              prompts = interface.get("defaultPrompt")
+              if not isinstance(prompts, list) or not prompts or not all(isinstance(item, str) and item.strip() for item in prompts):
+                  errors.append("plugin.interface.defaultPrompt must be a non-empty string array")
+              capabilities = interface.get("capabilities")
+              if not isinstance(capabilities, list) or not all(isinstance(item, str) and item.strip() for item in capabilities):
+                  errors.append("plugin.interface.capabilities must be a string array")
+              for key in ("websiteURL", "privacyPolicyURL", "termsOfServiceURL"):
+                  if key in interface:
+                      parsed = urlparse(interface[key])
+                      if parsed.scheme != "https" or not parsed.netloc:
+                          errors.append(f"plugin.interface.{key} must be an absolute https URL")
+
+          if marketplace.get("name") != manifest.get("name"):
+              errors.append("marketplace.name must match plugin.name")
+          plugins = marketplace.get("plugins")
+          if not isinstance(plugins, list) or len(plugins) != 1:
+              errors.append("marketplace.plugins must contain exactly one plugin entry")
+          else:
+              entry = plugins[0]
+              if entry.get("name") != manifest.get("name"):
+                  errors.append("marketplace plugin name must match plugin.name")
+              if entry.get("source", {}).get("source") != "local":
+                  errors.append("marketplace source.source must be local")
+              if entry.get("source", {}).get("path") != "./plugins/helm-chart-best-practices":
+                  errors.append("marketplace source.path must point at ./plugins/helm-chart-best-practices")
+              policy = entry.get("policy")
+              if not isinstance(policy, dict):
+                  errors.append("marketplace policy is required")
+              else:
+                  if policy.get("installation") not in {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}:
+                      errors.append("marketplace policy.installation is invalid")
+                  if policy.get("authentication") not in {"ON_INSTALL", "ON_USE"}:
+                      errors.append("marketplace policy.authentication is invalid")
+              require_string(entry, "category", "marketplace plugin")
+
+          if errors:
+              for error in errors:
+                  print(f"::error::{error}")
+              sys.exit(1)
+          print("Codex plugin metadata OK")
+          PY
+
       - name: Validate SKILL.md frontmatter
         run: |
           python - <<'PY'
@@ -54,7 +138,7 @@ jobs:
           from pathlib import Path
           import yaml
 
-          skill_path = Path("skills/helm-chart-best-practices/SKILL.md")
+          skill_path = Path("plugins/helm-chart-best-practices/skills/helm-chart-best-practices/SKILL.md")
           text = skill_path.read_text()
           if not text.startswith("---\n"):
               sys.exit(f"::error::{skill_path} is missing a YAML frontmatter block")
@@ -76,8 +160,8 @@ jobs:
           ARTIFACT="helm-chart-best-practices.skill"
           # Build the zip with paths rooted at `helm-chart-best-practices/...`
           (
-            cd skills
-            zip -r "../$ARTIFACT" helm-chart-best-practices \
+            cd plugins/helm-chart-best-practices/skills
+            zip -r "../../../$ARTIFACT" helm-chart-best-practices \
               -x "**/__pycache__/*" "**/*.pyc" "**/.DS_Store"
           )
           ls -la "$ARTIFACT"
@@ -100,6 +184,12 @@ jobs:
             ```
             /plugin marketplace add ${{ github.repository }}
             /plugin install helm-chart-best-practices@helm-chart-best-practices
+            ```
+
+            ### As a plugin (Codex)
+            ```
+            codex plugin marketplace add ${{ github.repository }}
+            codex plugin add helm-chart-best-practices@helm-chart-best-practices
             ```
 
             ### As a single skill (download the `.skill` below)

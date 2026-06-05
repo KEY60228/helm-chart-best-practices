@@ -1,0 +1,8 @@
+interface:
+  display_name: "Helm Chart Best Practices"
+  short_description: "Review and generate best-practice Helm charts"
+  brand_color: "#0F766E"
+  default_prompt: "Use $helm-chart-best-practices to review this Helm chart and suggest best-practice fixes."
+
+policy:
+  allow_implicit_invocation: true
